@@ -24,14 +24,23 @@ export async function writeOAuthCredentials(
   });
 }
 
-export async function setAnthropicApiKey(key: string, agentDir?: string) {
+export async function setAnthropicApiKey(
+  key: string,
+  agentDir?: string,
+  options?: { baseUrl?: string },
+) {
   // Write to resolved agent dir so gateway finds credentials on startup.
+  const metadata: { baseUrl?: string } = {};
+  if (options?.baseUrl?.trim()) {
+    metadata.baseUrl = options.baseUrl.trim();
+  }
   upsertAuthProfile({
     profileId: "anthropic:default",
     credential: {
       type: "api_key",
       provider: "anthropic",
       key,
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     },
     agentDir: resolveAuthAgentDir(agentDir),
   });

@@ -21,6 +21,9 @@ import { discoverVeniceModels, VENICE_BASE_URL } from "./venice-models.js";
 type ModelsConfig = NonNullable<OpenClawConfig["models"]>;
 export type ProviderConfig = NonNullable<ModelsConfig["providers"]>[string];
 
+// Anthropic provider constants
+const ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com";
+
 const MINIMAX_API_BASE_URL = "https://api.minimax.chat/v1";
 const MINIMAX_PORTAL_BASE_URL = "https://api.minimax.io/anthropic";
 const MINIMAX_DEFAULT_MODEL_ID = "MiniMax-M2.1";
@@ -385,6 +388,22 @@ export function buildXiaomiProvider(): ProviderConfig {
   };
 }
 
+/**
+ * Build Anthropic provider configuration with optional custom base URL.
+ * Uses ANTHROPIC_BASE_URL env var or defaults to https://api.anthropic.com
+ */
+export function buildAnthropicProvider(params?: { baseUrl?: string }): ProviderConfig {
+  const baseUrl =
+    params?.baseUrl?.trim() || process.env.ANTHROPIC_BASE_URL?.trim() || ANTHROPIC_DEFAULT_BASE_URL;
+  return {
+    baseUrl,
+    api: "anthropic-messages",
+    models: [],
+    // Note: We don't define explicit models here to allow pi-ai's built-in
+    // model catalog to be used. Only baseUrl is overridden.
+  };
+}
+
 async function buildVeniceProvider(): Promise<ProviderConfig> {
   const models = await discoverVeniceModels();
   return {
@@ -496,6 +515,23 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
   if (ollamaKey) {
     providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
+  }
+
+  // Anthropic provider - add if custom baseUrl is configured via env var or profile metadata
+  const anthropicEnvBaseUrl = process.env.ANTHROPIC_BASE_URL?.trim();
+  const anthropicProfiles = listProfilesForProvider(authStore, "anthropic");
+  let anthropicCustomBaseUrl: string | undefined;
+  for (const profileId of anthropicProfiles) {
+    const cred = authStore.profiles[profileId];
+    if (cred?.type === "api_key" && cred.metadata?.baseUrl?.trim()) {
+      anthropicCustomBaseUrl = cred.metadata.baseUrl.trim();
+      break;
+    }
+  }
+  if (anthropicEnvBaseUrl || anthropicCustomBaseUrl) {
+    providers.anthropic = buildAnthropicProvider({
+      baseUrl: anthropicEnvBaseUrl ?? anthropicCustomBaseUrl,
+    });
   }
 
   return providers;

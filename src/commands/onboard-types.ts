@@ -65,6 +65,7 @@ export type OnboardOptions = {
   /** Used when `authChoice=token` in non-interactive mode. */
   tokenExpiresIn?: string;
   anthropicApiKey?: string;
+  anthropicBaseUrl?: string;
   openaiApiKey?: string;
   openrouterApiKey?: string;
   aiGatewayApiKey?: string;

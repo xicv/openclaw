@@ -87,7 +87,14 @@ export async function applyNonInteractiveAuthChoice(params: {
       return null;
     }
     if (resolved.source !== "profile") {
-      await setAnthropicApiKey(resolved.key);
+      // Check for custom base URL from flag or environment
+      const customBaseUrl =
+        opts.anthropicBaseUrl?.trim() || process.env.ANTHROPIC_BASE_URL?.trim();
+      await setAnthropicApiKey(
+        resolved.key,
+        undefined,
+        customBaseUrl ? { baseUrl: customBaseUrl } : undefined,
+      );
     }
     return applyAuthProfileConfig(nextConfig, {
       profileId: "anthropic:default",

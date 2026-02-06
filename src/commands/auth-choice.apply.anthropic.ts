@@ -89,6 +89,19 @@ export async function applyAuthChoiceAnthropic(
       });
       await setAnthropicApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
     }
+
+    // Prompt for custom base URL (optional)
+    const customBaseUrl = await params.prompter.text({
+      message: "Custom base URL (blank for default, or e.g., https://api.anthropic.com)",
+      placeholder: "https://api.anthropic.com",
+    });
+    const baseUrl = String(customBaseUrl ?? "").trim();
+    if (baseUrl) {
+      await setAnthropicApiKey(envKey ?? params.opts?.token ?? "", params.agentDir, {
+        baseUrl,
+      });
+    }
+
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "anthropic:default",
       provider: "anthropic",

@@ -71,6 +71,7 @@ export function registerOnboardCommand(program: Command) {
     )
     .option("--token-expires-in <duration>", "Optional token expiry duration (e.g. 365d, 12h)")
     .option("--anthropic-api-key <key>", "Anthropic API key")
+    .option("--anthropic-base-url <url>", "Anthropic API base URL (default: https://api.anthropic.com)")
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--openrouter-api-key <key>", "OpenRouter API key")
     .option("--ai-gateway-api-key <key>", "Vercel AI Gateway API key")
@@ -126,6 +127,7 @@ export function registerOnboardCommand(program: Command) {
             tokenProfileId: opts.tokenProfileId as string | undefined,
             tokenExpiresIn: opts.tokenExpiresIn as string | undefined,
             anthropicApiKey: opts.anthropicApiKey as string | undefined,
+            anthropicBaseUrl: opts.anthropicBaseUrl as string | undefined,
             openaiApiKey: opts.openaiApiKey as string | undefined,
             openrouterApiKey: opts.openrouterApiKey as string | undefined,
             aiGatewayApiKey: opts.aiGatewayApiKey as string | undefined,

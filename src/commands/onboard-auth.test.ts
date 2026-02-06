@@ -528,3 +528,99 @@ describe("applyOpenrouterConfig", () => {
     expect(cfg.agents?.defaults?.model?.fallbacks).toEqual(["anthropic/claude-opus-4-5"]);
   });
 });
+
+describe("setAnthropicApiKey", () => {
+  const previousStateDir = process.env.OPENCLAW_STATE_DIR;
+  const previousAgentDir = process.env.OPENCLAW_AGENT_DIR;
+  const previousPiAgentDir = process.env.PI_CODING_AGENT_DIR;
+  let tempStateDir: string | null = null;
+
+  afterEach(async () => {
+    if (tempStateDir) {
+      await fs.rm(tempStateDir, { recursive: true, force: true });
+      tempStateDir = null;
+    }
+    if (previousStateDir === undefined) {
+      delete process.env.OPENCLAW_STATE_DIR;
+    } else {
+      process.env.OPENCLAW_STATE_DIR = previousStateDir;
+    }
+    if (previousAgentDir === undefined) {
+      delete process.env.OPENCLAW_AGENT_DIR;
+    } else {
+      process.env.OPENCLAW_AGENT_DIR = previousAgentDir;
+    }
+    if (previousPiAgentDir === undefined) {
+      delete process.env.PI_CODING_AGENT_DIR;
+    } else {
+      process.env.PI_CODING_AGENT_DIR = previousPiAgentDir;
+    }
+  });
+
+  it("writes API key without baseUrl", async () => {
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
+    process.env.OPENCLAW_STATE_DIR = tempStateDir;
+    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+
+    const { setAnthropicApiKey } = await import("./onboard-auth.js");
+    await setAnthropicApiKey("sk-ant-test-key");
+
+    const authProfilePath = authProfilePathFor(requireAgentDir());
+    const raw = await fs.readFile(authProfilePath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      profiles?: Record<string, { type?: string; key?: string; provider?: string; metadata?: Record<string, string> }>;
+    };
+    expect(parsed.profiles?.["anthropic:default"]).toMatchObject({
+      type: "api_key",
+      provider: "anthropic",
+      key: "sk-ant-test-key",
+    });
+    expect(parsed.profiles?.["anthropic:default"]?.metadata).toBeUndefined();
+  });
+
+  it("writes API key with baseUrl in metadata", async () => {
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
+    process.env.OPENCLAW_STATE_DIR = tempStateDir;
+    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+
+    const { setAnthropicApiKey } = await import("./onboard-auth.js");
+    await setAnthropicApiKey("sk-ant-test-key", undefined, {
+      baseUrl: "https://custom.anthropic.example.com",
+    });
+
+    const authProfilePath = authProfilePathFor(requireAgentDir());
+    const raw = await fs.readFile(authProfilePath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      profiles?: Record<string, { type?: string; key?: string; provider?: string; metadata?: Record<string, string> }>;
+    };
+    expect(parsed.profiles?.["anthropic:default"]).toMatchObject({
+      type: "api_key",
+      provider: "anthropic",
+      key: "sk-ant-test-key",
+      metadata: { baseUrl: "https://custom.anthropic.example.com" },
+    });
+  });
+
+  it("trims whitespace from baseUrl", async () => {
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
+    process.env.OPENCLAW_STATE_DIR = tempStateDir;
+    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+
+    const { setAnthropicApiKey } = await import("./onboard-auth.js");
+    await setAnthropicApiKey("sk-ant-test-key", undefined, {
+      baseUrl: "  https://custom.anthropic.example.com  ",
+    });
+
+    const authProfilePath = authProfilePathFor(requireAgentDir());
+    const raw = await fs.readFile(authProfilePath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      profiles?: Record<string, { metadata?: Record<string, string> }>;
+    };
+    expect(parsed.profiles?.["anthropic:default"]?.metadata?.baseUrl).toBe(
+      "https://custom.anthropic.example.com",
+    );
+  });
+});
